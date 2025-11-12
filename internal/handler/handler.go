@@ -20,6 +20,11 @@ func NewServer() *Server {
 	return &Server{service: svc}
 }
 
+func NewServerWithRepo(repo repository.Repository) *Server {
+	svc := service.New(repo)
+	return &Server{service: svc}
+}
+
 func (s *Server) Router() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleMain)
