@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/includingByMeAndMyself/urlshortening/internal/repository"
 	"github.com/includingByMeAndMyself/urlshortening/internal/service"
 )
@@ -16,8 +17,7 @@ type Server struct {
 
 func NewServer() *Server {
 	repo := repository.NewMemoryRepo()
-	svc := service.New(repo)
-	return &Server{service: svc}
+	return NewServerWithRepo(repo)
 }
 
 func NewServerWithRepo(repo repository.Repository) *Server {
@@ -25,25 +25,17 @@ func NewServerWithRepo(repo repository.Repository) *Server {
 	return &Server{service: svc}
 }
 
-func (s *Server) Router() *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", s.handleMain)
-	return mux
-}
+func (s *Server) Router() http.Handler {
+	r := chi.NewRouter()
 
-func (s *Server) handleMain(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		s.handleShorten(w, r)
-	} else if r.Method == http.MethodGet {
-		path := r.URL.Path
-		if path == "/" {
-			http.Error(w, "root GET not allowed", http.StatusBadRequest)
-			return
-		}
-		s.handleRedirect(w, r)
-	} else {
-		http.Error(w, "method not allowed", http.StatusBadRequest)
-	}
+	r.Post("/", s.handleShorten)
+	r.Get("/{id}", s.handleRedirect)
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "root GET not allowed", http.StatusBadRequest)
+	})
+
+	return r
 }
 
 func (s *Server) handleShorten(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +68,7 @@ func (s *Server) handleShorten(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRedirect(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/")
+	id := chi.URLParam(r, "id")
 	if id == "" {
 		http.Error(w, "invalid ID", http.StatusBadRequest)
 		return
@@ -89,5 +81,5 @@ func (s *Server) handleRedirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Location", originalURL)
-	w.WriteHeader(http.StatusTemporaryRedirect) // 307
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
