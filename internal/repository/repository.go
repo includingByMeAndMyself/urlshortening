@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import "github.com/includingByMeAndMyself/urlshortening/internal/model"
 
