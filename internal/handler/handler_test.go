@@ -119,7 +119,7 @@ func TestRedirectHandler(t *testing.T) {
 		{
 			name:       "non-existent ID",
 			path:       "/unknown",
-			wantStatus: http.StatusBadRequest,
+			wantStatus: http.StatusNotFound,
 		},
 		{
 			name:       "root GET (invalid)",

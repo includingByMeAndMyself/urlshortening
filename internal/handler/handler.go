@@ -76,7 +76,7 @@ func (s *Server) handleRedirect(w http.ResponseWriter, r *http.Request) {
 
 	originalURL, err := s.service.GetOriginal(id)
 	if err != nil {
-		http.Error(w, "ID not found", http.StatusBadRequest)
+		http.Error(w, "ID not found", http.StatusNotFound)
 		return
 	}
 
