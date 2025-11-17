@@ -3,17 +3,17 @@ package service
 import (
 	"crypto/rand"
 	"errors"
-	"strings"
+	"net/url"
 
 	"github.com/includingByMeAndMyself/urlshortening/internal/model"
 	"github.com/includingByMeAndMyself/urlshortening/internal/repository"
 )
 
 type Service struct {
-	repo repository.Repository
+	repo repository.URLStorer
 }
 
-func New(repo repository.Repository) *Service {
+func New(repo repository.URLStorer) *Service {
 	return &Service{repo: repo}
 }
 
@@ -44,8 +44,11 @@ func (s *Service) GetOriginal(id string) (string, error) {
 }
 
 func isValidURL(u string) bool {
-	u = strings.TrimSpace(u)
-	return strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://")
+	parsedURL, err := url.Parse(u)
+	if err != nil {
+		return false
+	}
+	return (parsedURL.Scheme == "http" || parsedURL.Scheme == "https") && parsedURL.Host != ""
 }
 
 func generateShortID() (string, error) {

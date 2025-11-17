@@ -2,6 +2,7 @@ package handler
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -20,7 +21,7 @@ func NewServer(baseURL string) *Server {
 	return NewServerWithRepo(repo, baseURL)
 }
 
-func NewServerWithRepo(repo repository.Repository, baseURL string) *Server {
+func NewServerWithRepo(repo repository.URLStorer, baseURL string) *Server {
 	svc := service.New(repo)
 	return &Server{
 		service: svc,
@@ -64,7 +65,9 @@ func (s *Server) handleShorten(w http.ResponseWriter, r *http.Request) {
 	shortURL := s.baseURL + "/" + id
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(shortURL))
+	if _, err := w.Write([]byte(shortURL)); err != nil {
+		log.Printf("failed to write response: %v", err)
+	}
 }
 
 func (s *Server) handleRedirect(w http.ResponseWriter, r *http.Request) {

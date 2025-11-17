@@ -14,7 +14,7 @@ type mockRepo struct {
 	urls map[string]*model.URLPair
 }
 
-func newMockRepo() repository.Repository {
+func newMockRepo() repository.URLStorer {
 	return &mockRepo{
 		urls: make(map[string]*model.URLPair),
 	}
