@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"fmt"
@@ -16,6 +16,11 @@ type Server struct {
 
 func NewServer() *Server {
 	repo := repository.NewMemoryRepo()
+	svc := service.New(repo)
+	return &Server{service: svc}
+}
+
+func NewServerWithRepo(repo repository.Repository) *Server {
 	svc := service.New(repo)
 	return &Server{service: svc}
 }
