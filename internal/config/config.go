@@ -11,27 +11,25 @@ type Config struct {
 }
 
 func MustLoad() *Config {
-	var (
-		address string
-		baseURL string
-	)
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
-		address = envRunAddr
-	} else {
-		flag.StringVar(&address, "a", "localhost:8080", "server address")
-	}
-
-	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
-		baseURL = envBaseURL
-	} else {
-		flag.StringVar(&baseURL, "b", "http://localhost:8080", "base URL for shortened links")
-	}
+	addressFlag := flag.String("a", "localhost:8080", "server address")
+	baseURLFlag := flag.String("b", "http://localhost:8080", "base URL for shortened links")
 
 	flag.Parse()
 
-	return &Config{
-		Address: address,
-		BaseURL: baseURL,
+	config := &Config{
+		Address: *addressFlag,
+		BaseURL: *baseURLFlag,
 	}
+
+	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
+		config.Address = envRunAddr
+	}
+
+	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
+		config.BaseURL = envBaseURL
+	}
+
+	return config
 }
