@@ -14,7 +14,7 @@ type mockRepo struct {
 	urls map[string]*model.URLPair
 }
 
-func newMockRepo() repository.Repository {
+func newMockRepo() repository.URLStorer {
 	return &mockRepo{
 		urls: make(map[string]*model.URLPair),
 	}
@@ -29,9 +29,11 @@ func (m *mockRepo) Get(id string) (*model.URLPair, bool) {
 	return pair, ok
 }
 
+const testBaseURL = "http://localhost:8080"
+
 func TestShortenHandler(t *testing.T) {
 	repo := newMockRepo()
-	svc := NewServerWithRepo(repo)
+	svc := NewServerWithRepo(repo, testBaseURL)
 	router := svc.Router()
 
 	tests := []struct {
@@ -46,7 +48,7 @@ func TestShortenHandler(t *testing.T) {
 			body:        "https://practicum.yandex.ru/",
 			contentType: "text/plain",
 			wantStatus:  http.StatusCreated,
-			wantPrefix:  "http://localhost:8080/",
+			wantPrefix:  testBaseURL + "/",
 		},
 		{
 			name:        "invalid URL",
@@ -87,10 +89,6 @@ func TestShortenHandler(t *testing.T) {
 			}
 		})
 	}
-
-	if len(repo.(*mockRepo).urls) == 0 {
-		t.Log("No URLs saved — may be expected for invalid cases")
-	}
 }
 
 func TestRedirectHandler(t *testing.T) {
@@ -103,7 +101,7 @@ func TestRedirectHandler(t *testing.T) {
 		OriginalURL: testURL,
 	})
 
-	svc := NewServerWithRepo(repo)
+	svc := NewServerWithRepo(repo, testBaseURL)
 	router := svc.Router()
 
 	tests := []struct {
@@ -121,7 +119,7 @@ func TestRedirectHandler(t *testing.T) {
 		{
 			name:       "non-existent ID",
 			path:       "/unknown",
-			wantStatus: http.StatusBadRequest,
+			wantStatus: http.StatusNotFound,
 		},
 		{
 			name:       "root GET (invalid)",

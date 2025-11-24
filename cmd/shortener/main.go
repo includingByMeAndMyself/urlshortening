@@ -12,11 +12,11 @@ import (
 func main() {
 	cfg := config.MustLoad()
 
-	s := handler.NewServer()
+	s := handler.NewServer(cfg.BaseURL)
 	router := s.Router()
 
 	loggedRouter := middleware.Logging(router)
 
-	log.Printf("Starting server on %s", cfg.Address)
+	log.Printf("Starting server on %s, base URL: %s", cfg.Address, cfg.BaseURL)
 	log.Fatal(http.ListenAndServe(cfg.Address, loggedRouter))
 }
