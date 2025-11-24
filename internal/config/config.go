@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"os"
 )
 
 type Config struct {
@@ -15,8 +16,17 @@ func MustLoad() *Config {
 		baseURL string
 	)
 
-	flag.StringVar(&address, "a", "localhost:8080", "server address")
-	flag.StringVar(&baseURL, "b", "http://localhost:8080", "base URL for shortened links")
+	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
+		address = envRunAddr
+	} else {
+		flag.StringVar(&address, "a", "localhost:8080", "server address")
+	}
+
+	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
+		baseURL = envBaseURL
+	} else {
+		flag.StringVar(&baseURL, "b", "http://localhost:8080", "base URL for shortened links")
+	}
 
 	flag.Parse()
 
