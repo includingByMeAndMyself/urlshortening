@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -142,6 +143,98 @@ func TestRedirectHandler(t *testing.T) {
 				loc := w.Header().Get("Location")
 				if loc != tt.wantLocation {
 					t.Errorf("expected Location %q, got %q", tt.wantLocation, loc)
+				}
+			}
+		})
+	}
+}
+
+func TestShortenJSONHandler(t *testing.T) {
+	repo := newMockRepo()
+	svc := NewServerWithRepo(repo, testBaseURL)
+	router := svc.Router()
+
+	tests := []struct {
+		name        string
+		body        string
+		contentType string
+		wantStatus  int
+		wantResult  string
+		checkResult bool
+	}{
+		{
+			name:        "valid URL",
+			body:        `{"url":"https://practicum.yandex.ru/"}`,
+			contentType: "application/json",
+			wantStatus:  http.StatusCreated,
+			wantResult:  testBaseURL + "/",
+			checkResult: true,
+		},
+		{
+			name:        "invalid URL",
+			body:        `{"url":"not-a-url"}`,
+			contentType: "application/json",
+			wantStatus:  http.StatusBadRequest,
+			checkResult: false,
+		},
+		{
+			name:        "empty URL",
+			body:        `{"url":""}`,
+			contentType: "application/json",
+			wantStatus:  http.StatusBadRequest,
+			checkResult: false,
+		},
+		{
+			name:        "missing Content-Type",
+			body:        `{"url":"https://example.com"}`,
+			contentType: "",
+			wantStatus:  http.StatusBadRequest,
+			checkResult: false,
+		},
+		{
+			name:        "invalid JSON",
+			body:        `{"url":}`,
+			contentType: "application/json",
+			wantStatus:  http.StatusBadRequest,
+			checkResult: false,
+		},
+		{
+			name:        "missing url field",
+			body:        `{}`,
+			contentType: "application/json",
+			wantStatus:  http.StatusBadRequest,
+			checkResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(tt.body))
+			if tt.contentType != "" {
+				req.Header.Set("Content-Type", tt.contentType)
+			}
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			if w.Code != tt.wantStatus {
+				t.Errorf("expected status %d, got %d", tt.wantStatus, w.Code)
+			}
+
+			if tt.checkResult {
+				contentType := w.Header().Get("Content-Type")
+				if contentType != "application/json" {
+					t.Errorf("expected Content-Type application/json, got %q", contentType)
+				}
+
+				var response shortenResponse
+				if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+					t.Errorf("failed to decode response: %v", err)
+					return
+				}
+
+				if !strings.HasPrefix(response.Result, tt.wantResult) {
+					t.Errorf("expected result to start with %q, got %q", tt.wantResult, response.Result)
 				}
 			}
 		})

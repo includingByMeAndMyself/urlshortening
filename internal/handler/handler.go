@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -32,6 +33,7 @@ func NewServerWithRepo(repo repository.URLStorer, baseURL string) *Server {
 func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Post("/", s.handleShorten)
+	r.Post("/api/shorten", s.handleShortenJSON)
 	r.Get("/{id}", s.handleRedirect)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "root GET not allowed", http.StatusBadRequest)
@@ -85,4 +87,48 @@ func (s *Server) handleRedirect(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", originalURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+// shortenRequest представляет JSON-запрос для сокращения URL
+type shortenRequest struct {
+	URL string `json:"url"`
+}
+
+// shortenResponse представляет JSON-ответ с сокращённым URL
+type shortenResponse struct {
+	Result string `json:"result"`
+}
+
+func (s *Server) handleShortenJSON(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "invalid Content-Type", http.StatusBadRequest)
+		return
+	}
+
+	var req shortenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	originalURL := strings.TrimSpace(req.URL)
+	if originalURL == "" {
+		http.Error(w, "empty URL", http.StatusBadRequest)
+		return
+	}
+
+	id, err := s.service.Shorten(originalURL)
+	if err != nil {
+		http.Error(w, "invalid URL", http.StatusBadRequest)
+		return
+	}
+
+	shortURL := s.baseURL + "/" + id
+	response := shortenResponse{Result: shortURL}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("failed to write response: %v", err)
+	}
 }
