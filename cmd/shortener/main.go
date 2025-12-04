@@ -15,8 +15,10 @@ func main() {
 	s := handler.NewServer(cfg.BaseURL)
 	router := s.Router()
 
-	loggedRouter := middleware.Logging(router)
+	handler := middleware.GzipDecompress(router)
+	handler = middleware.Logging(handler)
+	handler = middleware.GzipCompress(handler)
 
 	log.Printf("Starting server on %s, base URL: %s", cfg.Address, cfg.BaseURL)
-	log.Fatal(http.ListenAndServe(cfg.Address, loggedRouter))
+	log.Fatal(http.ListenAndServe(cfg.Address, handler))
 }
