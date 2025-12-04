@@ -97,6 +97,7 @@ func (r *FileRepo) Save(pair *model.URLPair) {
 	r.mu.Unlock()
 
 	if err := r.save(); err != nil {
+		_ = err // Игнорируем ошибку сохранения, данные уже в памяти
 	}
 }
 
