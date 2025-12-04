@@ -6,13 +6,20 @@ import (
 
 	"github.com/includingByMeAndMyself/urlshortening/internal/config"
 	"github.com/includingByMeAndMyself/urlshortening/internal/handler"
+	"github.com/includingByMeAndMyself/urlshortening/internal/repository"
 	"github.com/includingByMeAndMyself/urlshortening/pkg/middleware"
 )
 
 func main() {
 	cfg := config.MustLoad()
 
-	s := handler.NewServer(cfg.BaseURL)
+	repo, err := repository.NewFileRepo(cfg.FileStoragePath)
+	if err != nil {
+		log.Fatalf("failed to create file repository: %v", err)
+	}
+	log.Printf("Using file storage: %s", cfg.FileStoragePath)
+
+	s := handler.NewServerWithRepo(repo, cfg.BaseURL)
 	router := s.Router()
 
 	handler := middleware.GzipDecompress(router)
