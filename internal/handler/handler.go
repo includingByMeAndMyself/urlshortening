@@ -5,11 +5,13 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/includingByMeAndMyself/urlshortening/internal/repository"
 	"github.com/includingByMeAndMyself/urlshortening/internal/service"
+	"github.com/includingByMeAndMyself/urlshortening/pkg/middleware"
 )
 
 type Server struct {
@@ -38,7 +40,13 @@ func (s *Server) Router() http.Handler {
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "root GET not allowed", http.StatusBadRequest)
 	})
-	return r
+
+	// Настройка middleware
+	handler := middleware.GzipDecompress(r)
+	handler = middleware.Logging(handler)
+	handler = middleware.GzipCompress(handler)
+
+	return handler
 }
 
 func (s *Server) handleShorten(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +68,12 @@ func (s *Server) handleShorten(w http.ResponseWriter, r *http.Request) {
 
 	id, err := s.service.Shorten(originalURL)
 	if err != nil {
-		http.Error(w, "invalid URL", http.StatusBadRequest)
+		if err == service.ErrInvalidURL {
+			http.Error(w, "invalid URL", http.StatusBadRequest)
+			return
+		}
+		log.Printf("failed to shorten URL: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -119,11 +132,21 @@ func (s *Server) handleShortenJSON(w http.ResponseWriter, r *http.Request) {
 
 	id, err := s.service.Shorten(originalURL)
 	if err != nil {
-		http.Error(w, "invalid URL", http.StatusBadRequest)
+		if err == service.ErrInvalidURL {
+			http.Error(w, "invalid URL", http.StatusBadRequest)
+			return
+		}
+		log.Printf("failed to shorten URL: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	shortURL := s.baseURL + "/" + id
+	shortURL, err := url.JoinPath(s.baseURL, id)
+	if err != nil {
+		log.Printf("failed to join URL path: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 	response := shortenResponse{Result: shortURL}
 
 	w.Header().Set("Content-Type", "application/json")

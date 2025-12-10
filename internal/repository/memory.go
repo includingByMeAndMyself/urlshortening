@@ -29,3 +29,15 @@ func (r *MemoryRepo) Get(id string) (*model.URLPair, bool) {
 	pair, ok := r.urls[id]
 	return pair, ok
 }
+
+// GetAll возвращает копию всех URL пар (используется FileRepo для сохранения)
+func (r *MemoryRepo) GetAll() map[string]*model.URLPair {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	
+	result := make(map[string]*model.URLPair, len(r.urls))
+	for id, pair := range r.urls {
+		result[id] = pair
+	}
+	return result
+}

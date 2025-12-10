@@ -12,7 +12,7 @@ type Config struct {
 	FileStoragePath string
 }
 
-func MustLoad() *Config {
+func Load() *Config {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
 	addressFlag := flag.String("a", "localhost:8080", "server address")
@@ -29,15 +29,15 @@ func MustLoad() *Config {
 		FileStoragePath: *fileStorageFlag,
 	}
 
-	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
+	if envRunAddr, ok := os.LookupEnv("SERVER_ADDRESS"); ok && envRunAddr != "" {
 		config.Address = envRunAddr
 	}
 
-	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
+	if envBaseURL, ok := os.LookupEnv("BASE_URL"); ok && envBaseURL != "" {
 		config.BaseURL = envBaseURL
 	}
 
-	if envFileStorage := os.Getenv("FILE_STORAGE_PATH"); envFileStorage != "" {
+	if envFileStorage, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok && envFileStorage != "" {
 		config.FileStoragePath = envFileStorage
 	}
 

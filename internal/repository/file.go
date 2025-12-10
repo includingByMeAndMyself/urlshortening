@@ -2,6 +2,7 @@ package repository
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"sync"
 
@@ -14,16 +15,17 @@ type urlRecord struct {
 	OriginalURL string `json:"original_url"`
 }
 
+// FileRepo представляет файловый репозиторий как обёртку над MemoryRepo
 type FileRepo struct {
+	*MemoryRepo
 	filePath string
-	urls     map[string]*model.URLPair
-	mu       sync.RWMutex
+	mu       sync.Mutex
 }
 
 func NewFileRepo(filePath string) (*FileRepo, error) {
 	repo := &FileRepo{
-		filePath: filePath,
-		urls:     make(map[string]*model.URLPair),
+		MemoryRepo: NewMemoryRepo(),
+		filePath:   filePath,
 	}
 
 	if err := repo.load(); err != nil {
@@ -37,12 +39,12 @@ func (r *FileRepo) load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, err := os.Stat(r.filePath); os.IsNotExist(err) {
-		return nil
-	}
-
 	data, err := os.ReadFile(r.filePath)
 	if err != nil {
+		// Если файл не существует, это нормально - создаём пустой репозиторий
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return err
 	}
 
@@ -55,22 +57,25 @@ func (r *FileRepo) load() error {
 		return err
 	}
 
+	// Загружаем записи в память через встроенный MemoryRepo
 	for _, record := range records {
-		r.urls[record.ShortURL] = &model.URLPair{
+		r.MemoryRepo.Save(&model.URLPair{
 			ID:          record.ShortURL,
 			OriginalURL: record.OriginalURL,
-		}
+		})
 	}
 
 	return nil
 }
 
 func (r *FileRepo) save() error {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	records := make([]urlRecord, 0, len(r.urls))
-	for id, pair := range r.urls {
+	// Получаем все записи из встроенного MemoryRepo
+	urls := r.MemoryRepo.GetAll()
+	records := make([]urlRecord, 0, len(urls))
+	for id, pair := range urls {
 		records = append(records, urlRecord{
 			UUID:        id,
 			ShortURL:    id,
@@ -92,18 +97,11 @@ func (r *FileRepo) save() error {
 }
 
 func (r *FileRepo) Save(pair *model.URLPair) {
-	r.mu.Lock()
-	r.urls[pair.ID] = pair
-	r.mu.Unlock()
+	// Сначала сохраняем в память через встроенный MemoryRepo
+	r.MemoryRepo.Save(pair)
 
+	// Затем сохраняем в файл (защищено мьютексом)
 	if err := r.save(); err != nil {
-		_ = err // Игнорируем ошибку сохранения, данные уже в памяти
+		log.Printf("failed to save to file: %v", err)
 	}
-}
-
-func (r *FileRepo) Get(id string) (*model.URLPair, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	pair, ok := r.urls[id]
-	return pair, ok
 }
