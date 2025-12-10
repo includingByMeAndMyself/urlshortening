@@ -9,6 +9,9 @@ import (
 	"github.com/includingByMeAndMyself/urlshortening/internal/repository"
 )
 
+// ErrInvalidURL представляет ошибку валидации URL
+var ErrInvalidURL = errors.New("invalid URL")
+
 type Service struct {
 	repo repository.URLStorer
 }
@@ -19,7 +22,7 @@ func New(repo repository.URLStorer) *Service {
 
 func (s *Service) Shorten(originalURL string) (string, error) {
 	if !isValidURL(originalURL) {
-		return "", errors.New("invalid URL")
+		return "", ErrInvalidURL
 	}
 
 	id, err := generateShortID()
